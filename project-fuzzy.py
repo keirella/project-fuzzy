@@ -1,96 +1,114 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 import hashlib
+import json
+import os
 
-# ---------------- AUTH ---------------- #
 st.set_page_config(page_title="Fuzzy Crop Recommendation", layout="centered")
 
-# Dummy users (username: password_hash)
-USERS = {
-    "zahra": hashlib.sha256("1234".encode()).hexdigest(),
-    "admin": hashlib.sha256("admin".encode()).hexdigest()
-}
+# ------------ USER AUTH ------------ #
+
+USER_FILE = "users.json"
+
+def load_users():
+    if os.path.exists(USER_FILE):
+        with open(USER_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    with open(USER_FILE, "w") as f:
+        json.dump(users, f)
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Inisialisasi session state
+users = load_users()
+
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+if 'page' not in st.session_state:
+    st.session_state.page = 'login'
 if 'username' not in st.session_state:
-    st.session_state.username = ""
+    st.session_state.username = ''
 
-# Bagian Login & Sign Up Page
-if not st.session_state.logged_in:
-    menu_auth = st.sidebar.selectbox("🔐 Menu Auth", ["Login", "Sign Up"])
-    st.title("🚪 Selamat Datang di Aplikasi Fuzzy Crop Recommendation")
+def show_login():
+    st.title("🚪 Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username in users and users[username] == hash_password(password):
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.success(f"Selamat datang, {username}!")
+            st.rerun()
+        else:
+            st.error("Username atau password salah.")
+    st.write("Belum punya akun?")
+    if st.button("Daftar sekarang"):
+        st.session_state.page = 'signup'
+        st.rerun()
 
-    if menu_auth == "Login":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("🔓 Login"):
-            if username in USERS and USERS[username] == hash_password(password):
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.success(f"✅ Login berhasil, selamat datang {username}!")
-                st.experimental_rerun()
-            else:
-                st.error("❌ Username atau password salah.")
+def show_signup():
+    st.title("📝 Daftar Akun Baru")
+    new_user = st.text_input("Username baru")
+    new_pass = st.text_input("Password baru", type="password")
+    if st.button("Daftar"):
+        if new_user.strip() == "" or new_pass.strip() == "":
+            st.warning("Username dan password tidak boleh kosong.")
+        elif new_user in users:
+            st.warning("Username sudah terdaftar.")
+        else:
+            users[new_user] = hash_password(new_pass)
+            save_users(users)
+            st.success("Akun berhasil dibuat! Silakan login.")
+            st.session_state.page = 'login'
+            st.rerun()
+    if st.button("Kembali ke login"):
+        st.session_state.page = 'login'
+        st.rerun()
 
-    elif menu_auth == "Sign Up":
-        new_user = st.text_input("Buat Username")
-        new_pass = st.text_input("Buat Password", type="password")
-        if st.button("📝 Daftar"):
-            if new_user in USERS:
-                st.warning("⚠️ Username sudah digunakan.")
-            else:
-                USERS[new_user] = hash_password(new_pass)
-                st.success("✅ Pendaftaran berhasil! Silakan login.")
+# ------------ DASHBOARD & FUZZY ------------ #
 
-# ---------------- APLIKASI UTAMA ---------------- #
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"👤 Logged in as: `{st.session_state.username}`")
-    if st.sidebar.button("🚪 Logout"):
+def show_dashboard():
+    st.sidebar.write(f"👤 User: **{st.session_state.username}**")
+    if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.experimental_rerun()
+        st.session_state.page = 'login'
+        st.session_state.username = ''
+        st.rerun()
+
+    menu = st.sidebar.selectbox("📚 Menu", ["Lihat Dataset", "Input dan Hasil Fuzzy"])
 
     @st.cache_data
     def load_data():
-        return pd.read_csv('dataset_fuzzy.csv')
+        return pd.read_csv("dataset_fuzzy.csv")
 
     try:
         data = load_data()
         data_loaded = True
     except Exception as e:
-        data_loaded = False
         st.warning("⚠️ Gagal memuat dataset.")
         st.error(f"Detail error: {e}")
-
-    menu = st.sidebar.selectbox("📚 Menu Aplikasi", ["Lihat Dataset", "Input dan Hasil Fuzzy"])
+        data_loaded = False
 
     if menu == "Lihat Dataset":
         st.title("📋 Dataset Fuzzy Crop")
         if data_loaded:
-            num_rows = st.sidebar.number_input("Jumlah data yang ditampilkan", 5, len(data), 10)
+            num_rows = st.sidebar.number_input("Jumlah baris", 5, len(data), 10)
             st.dataframe(data.head(num_rows))
-            with st.expander("📊 Informasi Dataset"):
-                st.write("Dimensi Dataset:", data.shape)
-                numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
-                st.write(data[numeric_cols].describe())
-                st.write("Missing Value per Kolom:")
+            with st.expander("📊 Statistik"):
+                st.write("Ukuran:", data.shape)
+                st.write(data.describe())
+                st.write("Missing Values:")
                 st.write(data.isnull().sum())
-        else:
-            st.warning("Dataset tidak tersedia.")
-
     else:
-        st.title("🌾 Input dan Hasil Rekomendasi Fuzzy")
+        st.title("🌾 Input dan Rekomendasi Fuzzy")
 
-        # Input
         col1, col2 = st.columns(2)
         with col1:
             input_temp = st.slider("🌡️ Temperature (°C)", 0.0, 50.0, 25.0)
@@ -126,7 +144,6 @@ if st.session_state.logged_in:
         crop['crop2'] = fuzz.trimf(crop.universe, [33, 50, 66])
         crop['crop3'] = fuzz.trimf(crop.universe, [66, 100, 100])
 
-        # Aturan fuzzy
         rules = [
             ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['crop1']),
             ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['crop2']),
@@ -189,4 +206,14 @@ if st.session_state.logged_in:
                 plot_var(crop, "Crop", output_crop)
 
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat komputasi fuzzy: {e}")
+            st.error(f"Error dalam perhitungan fuzzy: {e}")
+
+# ------------ MAIN ------------ #
+
+if not st.session_state.logged_in:
+    if st.session_state.page == 'login':
+        show_login()
+    else:
+        show_signup()
+else:
+    show_dashboard()
