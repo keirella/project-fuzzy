@@ -11,6 +11,8 @@ import base64
 
 st.set_page_config(page_title="Fuzzy Crop Recommendation", layout="centered")
 
+# ------------ BACKGROUND ------------ #
+
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
@@ -32,9 +34,10 @@ def set_bg_from_local(image_file):
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # Set background
-set_bg_from_local("gambar background(3).jpg")
+set_bg_from_local("D:/prak scpk/data.jpg")
 
-# ------------ USER AUTH ------------ #
+
+# ------------ USER LOGIN ------------ #
 
 USER_FILE = "users.json"
 
@@ -232,7 +235,7 @@ def show_dashboard():
         except Exception as e:
             st.error(f"Error dalam perhitungan fuzzy: {e}")
 
-# ------------ MAIN ------------ #
+# ------------ MAIN MENU ------------ #
 
 if not st.session_state.logged_in:
     if st.session_state.page == 'login':
