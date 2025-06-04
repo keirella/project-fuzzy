@@ -33,9 +33,8 @@ def set_bg_from_local(image_file):
     '''
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
-# Set background
+# Set background (ganti path sesuai file kamu)
 set_bg_from_local("D:/prak scpk/data.jpg")
-
 
 # ------------ USER LOGIN ------------ #
 
@@ -144,43 +143,44 @@ def show_dashboard():
             input_hum = st.slider("💧 Humidity (%)", 0.0, 100.0, 70.0)
             input_rain = st.slider("☔ Rainfall (mm)", 0.0, 300.0, 150.0)
 
-        # Fuzzy setup
-        temperature = ctrl.Antecedent(np.arange(0, 50, 1), 'temperature')
-        humidity = ctrl.Antecedent(np.arange(0, 100, 1), 'humidity')
-        ph = ctrl.Antecedent(np.arange(3, 10, 0.1), 'ph')
-        rainfall = ctrl.Antecedent(np.arange(0, 300, 1), 'rainfall')
-        crop = ctrl.Consequent(np.arange(0, 100, 1), 'crop')
+        # Setup fuzzy variables dan fungsi keanggotaan
+        temperature = ctrl.Antecedent(np.arange(0, 51, 1), 'temperature')
+        humidity = ctrl.Antecedent(np.arange(0, 101, 1), 'humidity')
+        ph = ctrl.Antecedent(np.arange(3, 10.1, 0.1), 'ph')
+        rainfall = ctrl.Antecedent(np.arange(0, 301, 1), 'rainfall')
+        crop = ctrl.Consequent(np.arange(0, 101, 1), 'crop')
 
         temperature['low'] = fuzz.trimf(temperature.universe, [0, 0, 25])
-        temperature['medium'] = fuzz.trapmf(temperature.universe, [20, 23, 27, 30])
-        temperature['high'] = fuzz.trimf(temperature.universe, [25, 50, 50])
+        temperature['medium'] = fuzz.trimf(temperature.universe, [20, 30, 40])
+        temperature['high'] = fuzz.trimf(temperature.universe, [35, 50, 50])
 
         humidity['low'] = fuzz.trimf(humidity.universe, [0, 0, 50])
-        humidity['medium'] = fuzz.trapmf(humidity.universe, [30, 40, 60, 70])
-        humidity['high'] = fuzz.trimf(humidity.universe, [50, 100, 100])
+        humidity['medium'] = fuzz.trimf(humidity.universe, [40, 60, 80])
+        humidity['high'] = fuzz.trimf(humidity.universe, [70, 100, 100])
 
         ph['acidic'] = fuzz.trimf(ph.universe, [3, 3, 6])
-        ph['neutral'] = fuzz.trapmf(ph.universe, [5.8, 6.2, 6.8, 7.2])
+        ph['neutral'] = fuzz.trimf(ph.universe, [5.8, 7, 7.2])
         ph['alkaline'] = fuzz.trimf(ph.universe, [7, 10, 10])
 
-        rainfall['low'] = fuzz.trimf(rainfall.universe, [0, 0, 100])
-        rainfall['medium'] = fuzz.trapmf(rainfall.universe, [70, 100, 200, 230])
+        rainfall['low'] = fuzz.trimf(rainfall.universe, [0, 0, 150])
+        rainfall['medium'] = fuzz.trimf(rainfall.universe, [100, 175, 250])
         rainfall['high'] = fuzz.trimf(rainfall.universe, [200, 300, 300])
 
-        crop['crop1'] = fuzz.trimf(crop.universe, [0, 0, 33])
-        crop['crop2'] = fuzz.trimf(crop.universe, [33, 50, 66])
-        crop['crop3'] = fuzz.trimf(crop.universe, [66, 100, 100])
+        crop['maize'] = fuzz.trimf(crop.universe, [0, 0, 33])
+        crop['chickpea'] = fuzz.trimf(crop.universe, [25, 50, 75])
+        crop['kidneybeans'] = fuzz.trimf(crop.universe, [67, 100, 100])
 
+        # Aturan fuzzy
         rules = [
-            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['crop1']),
-            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['crop2']),
-            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['crop3']),
-            ctrl.Rule(temperature['medium'] & humidity['high'] & ph['neutral'] & rainfall['high'], crop['crop1']),
-            ctrl.Rule(temperature['low'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['crop3']),
-            ctrl.Rule(temperature['high'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['crop2']),
-            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['low'], crop['crop1']),
-            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['acidic'] & rainfall['medium'], crop['crop2']),
-            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['high'], crop['crop3']),
+            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['maize']),
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['chickpea']),
+            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['kidneybeans']),
+            ctrl.Rule(temperature['medium'] & humidity['high'] & ph['neutral'] & rainfall['high'], crop['maize']),
+            ctrl.Rule(temperature['low'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['kidneybeans']),
+            ctrl.Rule(temperature['high'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['chickpea']),
+            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['low'], crop['maize']),
+            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['acidic'] & rainfall['medium'], crop['chickpea']),
+            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['high'], crop['kidneybeans']),
         ]
 
         crop_ctrl = ctrl.ControlSystem(rules)
@@ -200,7 +200,6 @@ def show_dashboard():
                 crop_name = "Chickpea"
             else:
                 crop_name = "Kidneybeans"
-
 
             st.success(f"🌱 Rekomendasi tanaman terbaik: **{crop_name}**")
             st.caption(f"Nilai fuzzy output: {output_crop:.2f}")
@@ -230,18 +229,28 @@ def show_dashboard():
                 with tab4:
                     plot_var(rainfall, "Rainfall (mm)", input_rain)
 
-            with st.expander("🔍 Keanggotaan Output"):
-                plot_var(crop, "Crop", output_crop)
+            with st.expander("📈 Fungsi Keanggotaan Output Crop"):
+                plt.figure(figsize=(8, 4))
+                for term_name, term_obj in crop.terms.items():
+                    plt.plot(crop.universe, term_obj.mf, label=term_name)
+                plt.axvline(x=output_crop, color='purple', linestyle='--', label='Output Crop')
+                plt.title("Fungsi Keanggotaan - Crop Recommendation")
+                plt.xlabel("Crop Output")
+                plt.ylabel("Derajat Keanggotaan")
+                plt.legend()
+                plt.grid(True)
+                st.pyplot(plt.gcf())
+                plt.close()
 
         except Exception as e:
-            st.error(f"Error dalam perhitungan fuzzy: {e}")
+            st.error(f"Terjadi kesalahan pada perhitungan fuzzy: {e}")
 
-# ------------ MAIN MENU ------------ #
+# ------------ MAIN ------------ #
 
 if not st.session_state.logged_in:
     if st.session_state.page == 'login':
         show_login()
-    else:
+    elif st.session_state.page == 'signup':
         show_signup()
 else:
     show_dashboard()
