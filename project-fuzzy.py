@@ -195,11 +195,12 @@ def show_dashboard():
 
             output_crop = crop_sim.output['crop']
             if output_crop < 33:
-                crop_name = "Crop 1"
+                crop_name = "Maize"
             elif output_crop < 66:
-                crop_name = "Crop 2"
+                crop_name = "Chickpea"
             else:
-                crop_name = "Crop 3"
+                crop_name = "Kidneybeans"
+
 
             st.success(f"🌱 Rekomendasi tanaman terbaik: **{crop_name}**")
             st.caption(f"Nilai fuzzy output: {output_crop:.2f}")
