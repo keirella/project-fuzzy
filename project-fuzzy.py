@@ -7,8 +7,32 @@ from skfuzzy import control as ctrl
 import hashlib
 import json
 import os
+import base64
 
 st.set_page_config(page_title="Fuzzy Crop Recommendation", layout="centered")
+
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+def set_bg_from_local(image_file):
+    bin_str = get_base64_of_bin_file(image_file)
+    page_bg_img = f'''
+    <style>
+    [data-testid="stApp"] {{
+        background-image: url("data:image/png;base64,{bin_str}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    </style>
+    '''
+    st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# Set background
+set_bg_from_local("gambar background(3).jpg")
 
 # ------------ USER AUTH ------------ #
 
