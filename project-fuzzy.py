@@ -138,49 +138,49 @@ def show_dashboard():
         col1, col2 = st.columns(2)
         with col1:
             input_temp = st.slider("🌡️ Temperature (°C)", 0.0, 50.0, 25.0)
-            input_ph = st.slider("🧪 pH", 3.0, 10.0, 6.5)
+            input_ph = st.slider("🧪 pH", 0.0, 10.0, 5.0)
         with col2:
-            input_hum = st.slider("💧 Humidity (%)", 0.0, 100.0, 70.0)
+            input_hum = st.slider("💧 Humidity (%)", 0.0, 100.0, 50.0)
             input_rain = st.slider("☔ Rainfall (mm)", 0.0, 300.0, 150.0)
 
         # Setup fuzzy variables dan fungsi keanggotaan
         temperature = ctrl.Antecedent(np.arange(0, 51, 1), 'temperature')
         humidity = ctrl.Antecedent(np.arange(0, 101, 1), 'humidity')
-        ph = ctrl.Antecedent(np.arange(3, 10.1, 0.1), 'ph')
+        ph = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'ph')
         rainfall = ctrl.Antecedent(np.arange(0, 301, 1), 'rainfall')
         crop = ctrl.Consequent(np.arange(0, 101, 1), 'crop')
 
         temperature['low'] = fuzz.trimf(temperature.universe, [0, 0, 25])
-        temperature['medium'] = fuzz.trimf(temperature.universe, [20, 30, 40])
+        temperature['medium'] = fuzz.trapmf(temperature.universe, [20, 23, 27, 30])
         temperature['high'] = fuzz.trimf(temperature.universe, [35, 50, 50])
 
         humidity['low'] = fuzz.trimf(humidity.universe, [0, 0, 50])
-        humidity['medium'] = fuzz.trimf(humidity.universe, [40, 60, 80])
+        humidity['medium'] = fuzz.trapmf(humidity.universe, [40, 50, 70, 80])
         humidity['high'] = fuzz.trimf(humidity.universe, [70, 100, 100])
 
         ph['acidic'] = fuzz.trimf(ph.universe, [3, 3, 6])
-        ph['neutral'] = fuzz.trimf(ph.universe, [5.8, 7, 7.2])
+        ph['neutral'] = fuzz.trapmf(ph.universe, [6.0, 6.3, 6.7, 7.0])
         ph['alkaline'] = fuzz.trimf(ph.universe, [7, 10, 10])
 
         rainfall['low'] = fuzz.trimf(rainfall.universe, [0, 0, 150])
-        rainfall['medium'] = fuzz.trimf(rainfall.universe, [100, 175, 250])
+        rainfall['medium'] = fuzz.trapmf(rainfall.universe, [80, 110, 170, 200])
         rainfall['high'] = fuzz.trimf(rainfall.universe, [200, 300, 300])
 
-        crop['maize'] = fuzz.trimf(crop.universe, [0, 0, 33])
-        crop['chickpea'] = fuzz.trimf(crop.universe, [25, 50, 75])
-        crop['kidneybeans'] = fuzz.trimf(crop.universe, [67, 100, 100])
+        crop['rice'] = fuzz.trimf(crop.universe, [0, 0, 33])
+        crop['maize'] = fuzz.trimf(crop.universe, [25, 50, 75])
+        crop['chickpea'] = fuzz.trimf(crop.universe, [67, 100, 100])
 
         # Aturan fuzzy
         rules = [
-            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['maize']),
-            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['chickpea']),
-            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['kidneybeans']),
+            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['rice']),
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['maize']),
+            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['chickpea']),
             ctrl.Rule(temperature['medium'] & humidity['high'] & ph['neutral'] & rainfall['high'], crop['maize']),
-            ctrl.Rule(temperature['low'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['kidneybeans']),
+            ctrl.Rule(temperature['low'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['rice']),
             ctrl.Rule(temperature['high'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['chickpea']),
-            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['low'], crop['maize']),
-            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['acidic'] & rainfall['medium'], crop['chickpea']),
-            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['high'], crop['kidneybeans']),
+            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['low'], crop['rice']),
+            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['acidic'] & rainfall['medium'], crop['maize']),
+            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['high'], crop['chickpea']),
         ]
 
         crop_ctrl = ctrl.ControlSystem(rules)
@@ -193,15 +193,15 @@ def show_dashboard():
             crop_sim.input['rainfall'] = input_rain
             crop_sim.compute()
 
-            output_crop = crop_sim.output['crop']
-            if output_crop < 33:
-                crop_name = "Maize"
-            elif output_crop < 66:
-                crop_name = "Chickpea"
+            output_crop = crop_sim.output['tanaman']
+            if output_crop < 3.3:
+                label = "rice"
+            elif output_crop < 6.6:
+                label = "maize"
             else:
-                crop_name = "Kidneybeans"
+                label = "chickpea"
 
-            st.success(f"🌱 Rekomendasi tanaman terbaik: **{crop_name}**")
+            st.success(f"🌱 Rekomendasi tanaman terbaik: **{label}**")
             st.caption(f"Nilai fuzzy output: {output_crop:.2f}")
 
             def plot_var(variable, label, nilai_vertikal=None):
