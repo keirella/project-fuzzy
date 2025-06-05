@@ -148,7 +148,8 @@ def show_dashboard():
         humidity = ctrl.Antecedent(np.arange(0, 101, 1), 'humidity')
         ph = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'ph')
         rainfall = ctrl.Antecedent(np.arange(0, 301, 1), 'rainfall')
-        crop = ctrl.Consequent(np.arange(0, 101, 1), 'crop')
+        
+        tanaman = ctrl.Consequent(np.arange(0, 101, 1), 'tanaman')
 
         temperature['low'] = fuzz.trimf(temperature.universe, [0, 0, 25])
         temperature['medium'] = fuzz.trapmf(temperature.universe, [20, 23, 27, 30])
@@ -166,43 +167,57 @@ def show_dashboard():
         rainfall['medium'] = fuzz.trapmf(rainfall.universe, [80, 110, 170, 200])
         rainfall['high'] = fuzz.trimf(rainfall.universe, [200, 300, 300])
 
-        crop['rice'] = fuzz.trimf(crop.universe, [0, 0, 33])
-        crop['maize'] = fuzz.trimf(crop.universe, [25, 50, 75])
-        crop['chickpea'] = fuzz.trimf(crop.universe, [67, 100, 100])
+        tanaman['rice'] = fuzz.trimf(tanaman.universe, [0, 0, 33])
+        tanaman['maize'] = fuzz.trimf(tanaman.universe, [25, 50, 75])
+        tanaman['chickpea'] = fuzz.trimf(tanaman.universe, [67, 100, 100])
 
-        # Aturan fuzzy
+        # Aturan fuzzy (Tambahan rules untuk cakupan yang lebih baik)
         rules = [
-            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['rice']),
-            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], crop['maize']),
-            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['chickpea']),
-            ctrl.Rule(temperature['medium'] & humidity['high'] & ph['neutral'] & rainfall['high'], crop['maize']),
-            ctrl.Rule(temperature['low'] & humidity['low'] & ph['alkaline'] & rainfall['low'], crop['rice']),
-            ctrl.Rule(temperature['high'] & humidity['high'] & ph['acidic'] & rainfall['medium'], crop['chickpea']),
-            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['low'], crop['rice']),
-            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['acidic'] & rainfall['medium'], crop['maize']),
-            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['high'], crop['chickpea']),
+         # Rules for Rice (Padi) - generally likes moderate to high humidity and rainfall, varying temps, and acidic to neutral pH
+            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['acidic'] & rainfall['medium'], tanaman['rice']),
+            ctrl.Rule(temperature['low'] & humidity['high'] & ph['acidic'] & rainfall['medium'], tanaman['rice']),
+            ctrl.Rule(temperature['low'] & humidity['high'] & ph['neutral'] & rainfall['high'], tanaman['rice']),
+            ctrl.Rule(temperature['medium'] & humidity['high'] & ph['acidic'] & rainfall['high'], tanaman['rice']),
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], tanaman['rice']),
+            ctrl.Rule(temperature['low'] & humidity['low'] & ph['neutral'] & rainfall['low'], tanaman['rice']), 
+            
+            # Rules for Maize (Jagung) - generally likes moderate temperature, humidity, and rainfall, neutral pH
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], tanaman['maize']),
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['low'], tanaman['maize']),
+            ctrl.Rule(temperature['medium'] & humidity['medium'] & ph['neutral'] & rainfall['high'], tanaman['maize']),
+            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['neutral'] & rainfall['medium'], tanaman['maize']),
+            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], tanaman['maize']),
+            ctrl.Rule(temperature['low'] & humidity['medium'] & ph['neutral'] & rainfall['medium'], tanaman['maize']), 
+            
+            # Rules for Chickpea (Kacang Arab) - generally likes warmer, drier conditions and alkaline soil
+            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['low'], tanaman['chickpea']),
+            ctrl.Rule(temperature['high'] & humidity['low'] & ph['alkaline'] & rainfall['medium'], tanaman['chickpea']),
+            ctrl.Rule(temperature['high'] & humidity['medium'] & ph['alkaline'] & rainfall['low'], tanaman['chickpea']),
+            ctrl.Rule(temperature['medium'] & humidity['low'] & ph['alkaline'] & rainfall['low'], tanaman['chickpea']),
+            ctrl.Rule(temperature['high'] & humidity['high'] & ph['alkaline'] & rainfall['low'], tanaman['chickpea']), 
+            ctrl.Rule(temperature['high'] & humidity['high'] & ph['acidic'] & rainfall['medium'], tanaman['chickpea']), 
         ]
 
-        crop_ctrl = ctrl.ControlSystem(rules)
-        crop_sim = ctrl.ControlSystemSimulation(crop_ctrl)
+        tanaman_ctrl = ctrl.ControlSystem(rules)
+        tanaman_sim = ctrl.ControlSystemSimulation(tanaman_ctrl)
 
         try:
-            crop_sim.input['temperature'] = input_temp
-            crop_sim.input['humidity'] = input_hum
-            crop_sim.input['ph'] = input_ph
-            crop_sim.input['rainfall'] = input_rain
-            crop_sim.compute()
+            tanaman_sim.input['temperature'] = input_temp
+            tanaman_sim.input['humidity'] = input_hum
+            tanaman_sim.input['ph'] = input_ph
+            tanaman_sim.input['rainfall'] = input_rain
+            tanaman_sim.compute()
 
-            output_crop = crop_sim.output['tanaman']
-            if output_crop < 3.3:
+            output_tanaman = tanaman_sim.output['tanaman']
+            if output_tanaman < 33.0:
                 label = "rice"
-            elif output_crop < 6.6:
+            elif output_tanaman < 66.0:
                 label = "maize"
             else:
                 label = "chickpea"
 
             st.success(f"🌱 Rekomendasi tanaman terbaik: **{label}**")
-            st.caption(f"Nilai fuzzy output: {output_crop:.2f}")
+            st.caption(f"Nilai fuzzy output: {output_tanaman:.2f}")
 
             def plot_var(variable, label, nilai_vertikal=None):
                 plt.figure(figsize=(8, 4))
@@ -231,9 +246,9 @@ def show_dashboard():
 
             with st.expander("📈 Fungsi Keanggotaan Output"):
                 plt.figure(figsize=(8, 4))
-                for term_name, term_obj in crop.terms.items():
-                    plt.plot(crop.universe, term_obj.mf, label=term_name)
-                plt.axvline(x=output_crop, color='purple', linestyle='--', label='Output')
+                for term_name, term_obj in tanaman.terms.items():
+                    plt.plot(tanaman.universe, term_obj.mf, label=term_name)
+                plt.axvline(x=output_tanaman, color='purple', linestyle='--', label='Output')
                 plt.title("Fungsi Keanggotaan - Tanaman Recommendation")
                 plt.xlabel("Output")
                 plt.ylabel("Derajat Keanggotaan")
