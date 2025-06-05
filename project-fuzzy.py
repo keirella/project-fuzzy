@@ -112,7 +112,7 @@ def show_dashboard():
 
     @st.cache_data
     def load_data():
-        return pd.read_csv("dataset_fuzzy.csv")
+        return pd.read_csv("dataset_fuzzy_3 tanaman.csv")
 
     try:
         data = load_data()
@@ -229,13 +229,13 @@ def show_dashboard():
                 with tab4:
                     plot_var(rainfall, "Rainfall (mm)", input_rain)
 
-            with st.expander("📈 Fungsi Keanggotaan Output Crop"):
+            with st.expander("📈 Fungsi Keanggotaan Output"):
                 plt.figure(figsize=(8, 4))
                 for term_name, term_obj in crop.terms.items():
                     plt.plot(crop.universe, term_obj.mf, label=term_name)
-                plt.axvline(x=output_crop, color='purple', linestyle='--', label='Output Crop')
-                plt.title("Fungsi Keanggotaan - Crop Recommendation")
-                plt.xlabel("Crop Output")
+                plt.axvline(x=output_crop, color='purple', linestyle='--', label='Output')
+                plt.title("Fungsi Keanggotaan - Tanaman Recommendation")
+                plt.xlabel("Output")
                 plt.ylabel("Derajat Keanggotaan")
                 plt.legend()
                 plt.grid(True)
